@@ -1166,10 +1166,10 @@ async function loadUserNFTs() {
     const balance = await nftContract.balanceOf(userAddress);
     const total = await nftContract.totalMinted();
 
-    log(`balance: ${balance} NFTs`);
+    log(`balance: ${Number(balance)} NFTs — scanning ${Number(total)} tokens...`);
     document.getElementById('nft-count').textContent = `${balance} FOUND`;
 
-    if (balance == 0) {
+    if (Number(balance) === 0) {
       container.innerHTML = '<div class="empty-state"><span class="big">∅</span>No CubeNFTs found in this wallet</div>';
       return;
     }
@@ -1181,7 +1181,7 @@ async function loadUserNFTs() {
         const owner = await nftContract.ownerOf(i);
         if (owner.toLowerCase() === userAddress.toLowerCase()) {
           const data = await nftContract.getCubeData(i);
-          found.push({ id: i, colorIndex: data.colorIndex, coinSymbol: data.coinSymbol, memeCoin: data.memeCoin });
+          found.push({ id: i, colorIndex: Number(data.colorIndex), coinSymbol: data.coinSymbol, memeCoin: data.memeCoin });
         }
       } catch(e) {}
     }
