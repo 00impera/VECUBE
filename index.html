@@ -3,861 +3,392 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>veCUBE — Rewards Dashboard</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<title>veCUBE — Rewards</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
 <style>
-:root {
-  --bg: #050505;
-  --bg2: #0a0a0a;
-  --bg3: #111;
-  --border: #1a1a1a;
-  --border2: #222;
-  --green: #00ff41;
-  --green2: #00cc33;
-  --green-dim: rgba(0,255,65,0.08);
-  --green-glow: rgba(0,255,65,0.15);
-  --text: #e0ffe0;
-  --muted: #3a5a3a;
-  --muted2: #2a3a2a;
-  --red: #ff3333;
-  --yellow: #ffee00;
-}
-
-* { margin:0; padding:0; box-sizing:border-box; }
-
-html { scroll-behavior: smooth; }
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'DM Sans', sans-serif;
-  min-height: 100vh;
-  cursor: crosshair;
-  overflow-x: hidden;
-}
-
-/* Matrix rain canvas */
-#matrix-canvas {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 0;
-}
-
-/* Scanlines */
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.03) 2px,
-    rgba(0,0,0,0.03) 4px
-  );
-  pointer-events: none;
-  z-index: 1000;
-}
-
-/* Header */
-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  height: 64px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(5,5,5,0.95);
-  backdrop-filter: blur(20px);
-}
-
-.logo {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px;
-  letter-spacing: 3px;
-  color: var(--green);
-  text-shadow: 0 0 20px rgba(0,255,65,0.5);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo-bracket { color: var(--muted); font-size: 22px; }
-
-.cube-icon {
-  display: inline-block;
-  width: 22px; height: 22px;
-  position: relative;
-  animation: rotateCube 8s linear infinite;
-}
-
-@keyframes rotateCube {
-  0% { transform: rotateY(0deg) rotateX(10deg); }
-  100% { transform: rotateY(360deg) rotateX(10deg); }
-}
-
-.cube-icon svg { width: 100%; height: 100%; }
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.chain-badge {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--muted);
-  border: 1px solid var(--border2);
-  padding: 5px 10px;
-  letter-spacing: 1px;
-}
-
-.chain-badge span { color: var(--green); }
-
-#connectBtn {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  background: transparent;
-  border: 1px solid var(--green);
-  color: var(--green);
-  padding: 8px 20px;
-  cursor: pointer;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  transition: all 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-
-#connectBtn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--green);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.15s;
-}
-
-#connectBtn:hover::before { transform: scaleX(1); }
-#connectBtn:hover { color: #000; }
-#connectBtn span { position: relative; z-index: 1; }
-
-.wallet-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  color: var(--green);
-  border: 1px solid var(--border2);
-  padding: 8px 14px;
-}
-
-.status-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  animation: blink 2s infinite;
-}
-
-@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-/* Main layout */
-main {
-  position: relative;
-  z-index: 1;
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 40px 32px;
-}
-
-/* Terminal header */
-.terminal-header {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--muted);
-  margin-bottom: 40px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  animation: fadeIn 0.5s ease;
-}
-
-.terminal-header::before {
-  content: '> ';
-  color: var(--green);
-}
-
-.typing {
-  overflow: hidden;
-  white-space: nowrap;
-  border-right: 2px solid var(--green);
-  animation: typing 2s steps(40) 0.5s both, blink-cursor 0.75s step-end infinite;
-  width: 0;
-}
-
-@keyframes typing { to { width: 100%; } }
-@keyframes blink-cursor { 50% { border-color: transparent; } }
-@keyframes fadeIn { from{opacity:0} to{opacity:1} }
-@keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-
-/* Stats grid */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 1px;
-  background: var(--border);
-  margin-bottom: 32px;
-  animation: slideUp 0.5s 0.2s ease both;
-}
-
-.stat {
-  background: var(--bg);
-  padding: 24px 20px;
-  position: relative;
-  overflow: hidden;
-  transition: background 0.2s;
-}
-
-.stat:hover { background: var(--bg2); }
-
-.stat::before {
-  content: attr(data-index);
-  position: absolute;
-  top: 8px; right: 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted2);
-  letter-spacing: 1px;
-}
-
-.stat-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-
-.stat-val {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 36px;
-  letter-spacing: 1px;
-  color: var(--green);
-  text-shadow: 0 0 15px rgba(0,255,65,0.3);
-  line-height: 1;
-}
-
-.stat-val.loading { animation: pulse 1s infinite; }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-
-.stat-sub {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  margin-top: 6px;
-}
-
-/* Main grid */
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: 1px;
-  background: var(--border);
-  animation: slideUp 0.5s 0.3s ease both;
-}
-
-.panel {
-  background: var(--bg);
-}
-
-/* Panel header */
-.p-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-}
-
-.p-head-tag {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--green);
-}
-
-.tag {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  padding: 2px 7px;
-  border: 1px solid currentColor;
-  letter-spacing: 1px;
-}
-
-.tag.green { color: var(--green); border-color: rgba(0,255,65,0.3); background: var(--green-dim); }
-.tag.yellow { color: var(--yellow); border-color: rgba(255,238,0,0.3); background: rgba(255,238,0,0.05); }
-.tag.red { color: var(--red); border-color: rgba(255,51,51,0.3); background: rgba(255,51,51,0.05); }
-
-/* NFT grid */
-.nft-grid {
-  padding: 20px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
-  max-height: 420px;
-  overflow-y: auto;
-}
-
-.nft-grid::-webkit-scrollbar { width: 4px; }
-.nft-grid::-webkit-scrollbar-track { background: var(--bg); }
-.nft-grid::-webkit-scrollbar-thumb { background: var(--border2); }
-
-.nft-card {
-  border: 1px solid var(--border2);
-  padding: 14px;
-  cursor: pointer;
-  transition: all 0.15s;
-  position: relative;
-  overflow: hidden;
-}
-
-.nft-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--green-glow);
-  opacity: 0;
-  transition: opacity 0.15s;
-}
-
-.nft-card:hover { border-color: rgba(0,255,65,0.4); }
-.nft-card:hover::after { opacity: 1; }
-.nft-card.active { border-color: var(--green); box-shadow: 0 0 16px rgba(0,255,65,0.1); }
-.nft-card.active::after { opacity: 1; }
-
-.nft-visual {
-  width: 100%;
-  aspect-ratio: 1;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-}
-
-.nft-cube {
-  width: 60px; height: 60px;
-}
-
-.nft-id {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--green);
-  font-weight: 600;
-}
-
-.nft-coin {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.nft-reward-badge {
-  margin-top: 8px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--green);
-  padding: 3px 0;
-  border-top: 1px solid var(--border);
-}
-
-/* Claim panel */
-.claim-section { padding: 20px; }
-
-.field {
-  margin-bottom: 16px;
-}
-
-.field-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-  display: block;
-}
-
-.field input, .field select {
-  width: 100%;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  color: var(--text);
-  padding: 10px 12px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  outline: none;
-  transition: border-color 0.15s;
-  appearance: none;
-}
-
-.field input:focus, .field select:focus {
-  border-color: var(--green);
-  box-shadow: 0 0 0 1px rgba(0,255,65,0.1);
-}
-
-.field select option { background: #111; }
-
-/* Reward display */
-.reward-block {
-  border: 1px solid var(--border2);
-  padding: 14px;
-  margin-bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  transition: border-color 0.15s;
-}
-
-.reward-block:hover { border-color: var(--border2); }
-
-.reward-token {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.token-dot {
-  width: 28px; height: 28px;
-  border: 1px solid currentColor;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 8px;
-  font-weight: 700;
-}
-
-.token-dot.c { color: var(--green); }
-.token-dot.b { color: #aa88ff; }
-
-.reward-name {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.reward-apr {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.reward-amount {
-  text-align: right;
-}
-
-.reward-val {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--green);
-}
-
-.reward-usd {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-/* Claim button */
-#claimBtn {
-  width: 100%;
-  padding: 14px;
-  background: transparent;
-  border: 1px solid var(--green);
-  color: var(--green);
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.15s;
-  margin-top: 16px;
-  position: relative;
-  overflow: hidden;
-}
-
-#claimBtn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--green);
-  transform: translateY(101%);
-  transition: transform 0.2s;
-}
-
-#claimBtn:hover::before { transform: translateY(0); }
-#claimBtn:hover { color: #000; }
-#claimBtn:disabled { opacity: 0.3; cursor: not-allowed; }
-#claimBtn:disabled::before { display: none; }
-#claimBtn span { position: relative; z-index: 1; }
-
-/* Sidebar */
-.sidebar { display: flex; flex-direction: column; gap: 1px; background: var(--border); }
-
-/* Epoch block */
-.epoch-block { background: var(--bg); padding: 20px; }
-
-.epoch-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 72px;
-  color: var(--green);
-  line-height: 1;
-  text-shadow: 0 0 30px rgba(0,255,65,0.3);
-  letter-spacing: 2px;
-}
-
-.epoch-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 3px;
-  text-transform: uppercase;
-  margin-bottom: 20px;
-}
-
-.progress-track {
-  height: 2px;
-  background: var(--border2);
-  margin-bottom: 6px;
-  position: relative;
-}
-
-.progress-fill {
-  height: 100%;
-  background: var(--green);
-  box-shadow: 0 0 8px var(--green);
-  transition: width 1s ease;
-}
-
-.progress-meta {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  margin-bottom: 20px;
-}
-
-/* Countdown */
-.countdown {
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 4px;
-  margin-bottom: 16px;
-}
-
-.cd-unit {
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  padding: 10px 4px;
-  text-align: center;
-}
-
-.cd-num {
-  font-family: 'Bebas Neue', sans-serif;
-  font-size: 28px;
-  color: var(--text);
-  line-height: 1;
-  display: block;
-}
-
-.cd-label {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 8px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  display: block;
-  margin-top: 2px;
-}
-
-.epoch-note {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  line-height: 1.7;
-  padding: 10px;
-  border: 1px solid var(--border2);
-  border-left: 2px solid var(--green);
-}
-
-/* Prices block */
-.prices-block { background: var(--bg); padding: 20px; }
-
-.price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.price-row:last-child { border: none; }
-
-.price-sym {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.price-sym::before {
-  content: '';
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.price-sym.c { color: var(--green); }
-.price-sym.b { color: #aa88ff; }
-.price-sym.m { color: var(--yellow); }
-
-.price-usd {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-/* Contracts block */
-.contracts-block { background: var(--bg); padding: 20px; }
-
-.contract-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.contract-row:last-child { border: none; }
-
-.contract-key {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 9px;
-  color: var(--muted);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.contract-val {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--green);
-  cursor: pointer;
-  transition: text-shadow 0.15s;
-}
-
-.contract-val:hover { text-shadow: 0 0 8px var(--green); }
-
-/* Log terminal */
-.log-terminal {
-  background: var(--bg);
-  border-top: 1px solid var(--border);
-  padding: 16px 20px;
-  max-height: 140px;
-  overflow-y: auto;
-  animation: slideUp 0.5s 0.4s ease both;
-}
-
-.log-terminal::-webkit-scrollbar { width: 3px; }
-.log-terminal::-webkit-scrollbar-thumb { background: var(--border2); }
-
-.log-line {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.8;
-  display: flex;
-  gap: 10px;
-}
-
-.log-line .ts { color: var(--muted2); }
-.log-line .msg { color: var(--green); }
-.log-line .err { color: var(--red); }
-.log-line .warn { color: var(--yellow); }
-
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(80px);
-  background: var(--bg3);
-  border: 1px solid var(--green);
-  box-shadow: 0 0 20px rgba(0,255,65,0.2);
-  padding: 12px 24px;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 12px;
-  color: var(--green);
-  z-index: 999;
-  transition: transform 0.3s;
-  white-space: nowrap;
-}
-
-.toast.show { transform: translateX(-50%) translateY(0); }
-
-/* Empty state */
-.empty-state {
-  padding: 60px 20px;
-  text-align: center;
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: var(--muted);
-  line-height: 2;
-}
-
-.empty-state .big { font-size: 48px; display: block; margin-bottom: 16px; color: var(--border2); }
-
-/* Loading spinner */
-.spinner {
-  display: inline-block;
-  width: 12px; height: 12px;
-  border: 1px solid var(--border2);
-  border-top-color: var(--green);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-  .stats-grid { grid-template-columns: repeat(3,1fr); }
-  header { padding: 0 16px; }
-  main { padding: 24px 16px; }
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --black:#000;
+  --white:#fff;
+  --g:#39ff14;
+  --g2:rgba(57,255,20,0.12);
+  --g3:rgba(57,255,20,0.06);
+  --glow:0 0 18px rgba(57,255,20,0.45);
+  --border:rgba(255,255,255,0.08);
+  --border2:rgba(57,255,20,0.25);
+  --panel:rgba(0,0,0,0.55);
+  --panel2:rgba(255,255,255,0.03);
+  --muted:rgba(255,255,255,0.35);
+  --muted2:rgba(255,255,255,0.15);
+  --red:#ff2244;
+  --yellow:#ffe600;
+  --purple:#bb99ff;
+}
+html,body{height:100%}
+body{
+  background:var(--black);
+  color:var(--white);
+  font-family:'IBM Plex Mono',monospace;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── BACKGROUND ── */
+#bg-canvas{
+  position:fixed;inset:0;z-index:0;
+  opacity:0.07;pointer-events:none;
+}
+.bg-grid{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(57,255,20,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57,255,20,0.04) 1px, transparent 1px);
+  background-size:40px 40px;
+}
+/* radial glow spots */
+.bg-glow{
+  position:fixed;pointer-events:none;z-index:0;
+  border-radius:50%;filter:blur(80px);
+}
+.bg-glow-1{
+  width:500px;height:500px;
+  top:-100px;left:-100px;
+  background:rgba(57,255,20,0.06);
+}
+.bg-glow-2{
+  width:400px;height:400px;
+  bottom:-80px;right:-80px;
+  background:rgba(57,255,20,0.05);
+}
+/* scanlines */
+body::after{
+  content:'';position:fixed;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.08) 3px,rgba(0,0,0,0.08) 4px);
+  pointer-events:none;z-index:999;
+}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 36px;height:58px;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border2);
+  box-shadow:0 1px 0 rgba(57,255,20,0.1);
+}
+.logo{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:24px;letter-spacing:4px;
+  color:var(--g);text-shadow:var(--glow);
+  display:flex;align-items:center;gap:10px;
+}
+.logo svg{animation:rotY 7s linear infinite;transform-style:preserve-3d}
+@keyframes rotY{to{transform:rotateY(360deg)}}
+.hdr-r{display:flex;align-items:center;gap:12px}
+.chain-tag{
+  font-size:10px;color:var(--muted);
+  border:1px solid var(--border);
+  padding:4px 10px;letter-spacing:1px;
+  background:var(--panel2);
+}
+.chain-tag b{color:var(--g)}
+#connectBtn{
+  font-family:'IBM Plex Mono',monospace;
+  font-size:11px;font-weight:700;
+  letter-spacing:2px;text-transform:uppercase;
+  background:var(--g);color:var(--black);
+  border:none;padding:9px 20px;cursor:pointer;
+  box-shadow:var(--glow);
+  transition:all 0.15s;
+}
+#connectBtn:hover{background:var(--white);box-shadow:0 0 18px rgba(255,255,255,0.4)}
+.wpill{
+  display:flex;align-items:center;gap:8px;
+  font-size:11px;color:var(--g);
+  border:1px solid var(--border2);
+  padding:7px 14px;
+  background:var(--g3);
+  box-shadow:var(--glow);
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--g);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(57,255,20,0.6)}50%{box-shadow:0 0 0 5px rgba(57,255,20,0)}}
+
+/* ── MAIN ── */
+main{position:relative;z-index:1;max-width:1300px;margin:0 auto;padding:32px 36px}
+
+/* hero */
+.hero{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(52px,7vw,100px);
+  line-height:.9;letter-spacing:-1px;
+  margin-bottom:36px;
+}
+.hero em{color:var(--g);font-style:normal;text-shadow:var(--glow)}
+
+/* stats */
+.stats{
+  display:grid;grid-template-columns:repeat(5,1fr);
+  margin-bottom:24px;
+  border:1px solid var(--border);
+  background:var(--panel);
+  backdrop-filter:blur(12px);
+}
+.st{
+  padding:20px 18px;
+  border-right:1px solid var(--border);
+  position:relative;
+}
+.st:last-child{border-right:none}
+.st-l{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.st-v{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:38px;color:var(--g);
+  text-shadow:var(--glow);line-height:1;
+}
+.st-s{font-size:9px;color:var(--muted2);margin-top:4px}
+
+/* layout */
+.layout{display:grid;grid-template-columns:1fr 292px;gap:12px}
+.col{display:flex;flex-direction:column;gap:12px}
+
+/* box */
+.box{
+  background:var(--panel);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  transition:border-color 0.2s;
+}
+.box:hover{border-color:rgba(57,255,20,0.15)}
+
+/* box header */
+.bx-h{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  font-size:9px;letter-spacing:2px;text-transform:uppercase;
+}
+.bx-ht{color:var(--white);font-weight:700}
+.tag{font-size:8px;padding:2px 7px;border:1px solid currentColor;letter-spacing:1px}
+.tg{color:var(--g);border-color:rgba(57,255,20,0.3);background:var(--g3)}
+.ty{color:var(--yellow);border-color:rgba(255,230,0,0.3);background:rgba(255,230,0,0.04)}
+.tw{color:var(--muted);border-color:var(--border)}
+
+/* nft grid */
+.nft-wrap{
+  padding:14px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;
+  max-height:360px;overflow-y:auto;
+}
+.nft-wrap::-webkit-scrollbar{width:3px}
+.nft-wrap::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2)}
+
+.nc{
+  border:1px solid var(--border);
+  padding:11px;cursor:pointer;
+  transition:all 0.12s;
+  background:rgba(0,0,0,0.3);
+}
+.nc:hover{border-color:rgba(57,255,20,0.4);background:var(--g3)}
+.nc.sel{
+  border-color:var(--g);background:var(--g2);
+  box-shadow:var(--glow);
+}
+.nc-svg{width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;margin-bottom:7px}
+.nc-id{font-size:11px;font-weight:700;color:var(--g)}
+.nc-sym{font-size:9px;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nc-tap{font-size:8px;color:rgba(57,255,20,0.3);margin-top:5px;padding-top:5px;border-top:1px solid var(--border)}
+.nc.sel .nc-tap{color:var(--g)}
+
+/* claim */
+.cl-body{padding:16px}
+.fl{margin-bottom:13px}
+.fl-lbl{font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px;display:block}
+.fl input,.fl select{
+  width:100%;background:rgba(0,0,0,0.5);
+  border:1px solid var(--border);color:var(--white);
+  padding:9px 11px;font-family:'IBM Plex Mono',monospace;
+  font-size:12px;outline:none;transition:border-color 0.12s;
+  backdrop-filter:blur(8px);appearance:none;
+}
+.fl input:focus,.fl select:focus{border-color:var(--g);box-shadow:0 0 0 1px rgba(57,255,20,0.08)}
+.fl select option{background:#0a0a0a}
+
+.rw{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:11px;border:1px solid var(--border);margin-bottom:6px;
+  background:rgba(0,0,0,0.3);transition:border-color 0.12s;
+}
+.rw:hover{border-color:rgba(57,255,20,0.2)}
+.rw-l{display:flex;align-items:center;gap:9px}
+.tkn{
+  width:28px;height:28px;border:1px solid currentColor;
+  display:flex;align-items:center;justify-content:center;
+  font-size:7px;font-weight:700;
+}
+.tkn-g{color:var(--g)}
+.tkn-p{color:var(--purple)}
+.rw-n{font-size:11px;font-weight:700}
+.rw-a{font-size:9px;color:var(--muted);margin-top:1px}
+.rw-r{text-align:right}
+.rw-v{font-size:12px;font-weight:700;color:var(--g)}
+.rw-u{font-size:9px;color:var(--muted);margin-top:1px}
+
+#claimBtn{
+  width:100%;margin-top:13px;padding:12px;
+  background:var(--g);color:var(--black);
+  border:none;font-family:'IBM Plex Mono',monospace;
+  font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;
+  cursor:pointer;transition:all 0.15s;box-shadow:var(--glow);
+}
+#claimBtn:hover{background:var(--white);box-shadow:0 0 20px rgba(255,255,255,0.3)}
+#claimBtn:disabled{background:rgba(255,255,255,0.1);color:var(--muted);box-shadow:none;cursor:not-allowed}
+
+/* sidebar panels */
+.ep-body,.px-body,.cx-body{padding:16px}
+
+.bignum{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:80px;line-height:1;
+  color:var(--g);text-shadow:var(--glow);
+  letter-spacing:-2px;
+}
+.ep-lbl{font-size:9px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px}
+
+.prog{height:1px;background:rgba(255,255,255,0.08);margin-bottom:5px}
+.prog-f{height:100%;background:var(--g);box-shadow:0 0 6px var(--g);transition:width 1s}
+.prog-m{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:16px}
+
+.cd{display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:12px}
+.cu{
+  background:rgba(0,0,0,0.5);border:1px solid var(--border);
+  padding:9px 3px;text-align:center;backdrop-filter:blur(8px);
+}
+.cn{font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--white);display:block;line-height:1}
+.cl-u{font-size:8px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-top:1px}
+
+.ep-note{
+  font-size:9px;color:var(--muted);line-height:1.8;
+  padding:9px;border-left:2px solid var(--g);
+  background:var(--g3);
+}
+
+.px-r{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border)}
+.px-r:last-child{border:none}
+.px-s{font-size:11px;font-weight:700;display:flex;align-items:center;gap:7px}
+.pdot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 5px currentColor}
+.pg{color:var(--g)}.pp{color:var(--purple)}.py{color:var(--yellow)}
+.px-v{font-size:12px;font-weight:700}
+
+.cx-r{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.cx-r:last-child{border:none}
+.cx-k{font-size:9px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.cx-v{font-size:10px;color:var(--g);cursor:pointer;transition:text-shadow 0.12s}
+.cx-v:hover{text-shadow:var(--glow)}
+
+/* terminal */
+.term{
+  margin-top:12px;
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(16px);
+  border:1px solid var(--border);
+  border-top:1px solid var(--border2);
+  padding:11px 16px;
+  max-height:110px;overflow-y:auto;
+}
+.term::-webkit-scrollbar{width:2px}
+.term::-webkit-scrollbar-thumb{background:rgba(57,255,20,0.2)}
+.tl{font-size:10px;line-height:2;display:flex;gap:9px}
+.ts{color:rgba(255,255,255,0.2)}
+.ok{color:var(--g)}
+.er{color:var(--red)}
+.wn{color:var(--yellow)}
+
+/* empty / toast / spinner */
+.empty{padding:48px 16px;text-align:center;font-size:11px;color:var(--muted);line-height:2}
+.empty .ico{font-size:36px;display:block;margin-bottom:10px;opacity:0.2}
+.spinner{display:inline-block;width:10px;height:10px;border:1px solid rgba(255,255,255,0.1);border-top-color:var(--g);border-radius:50%;animation:spin .5s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{
+  position:fixed;bottom:22px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:rgba(0,0,0,0.9);border:1px solid var(--g);
+  box-shadow:var(--glow);backdrop-filter:blur(20px);
+  padding:10px 22px;font-size:11px;color:var(--g);
+  z-index:9999;transition:transform 0.25s;white-space:nowrap;
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+@media(max-width:900px){
+  .layout{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  header,main{padding-left:16px;padding-right:16px}
 }
 </style>
 </head>
 <body>
 
-<canvas id="matrix-canvas"></canvas>
+<!-- Background layers -->
+<div class="bg-grid"></div>
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+<canvas id="bg-canvas"></canvas>
 
 <!-- Header -->
 <header>
   <div class="logo">
-    <span class="logo-bracket">[</span>
-    <div class="cube-icon">
-      <svg viewBox="0 0 22 22" fill="none">
-        <path d="M11 2L20 7V15L11 20L2 15V7L11 2Z" stroke="#00ff41" stroke-width="1" fill="rgba(0,255,65,0.05)"/>
-        <path d="M11 2V20M2 7L20 7M2 15L20 15" stroke="#00ff41" stroke-width="0.4" opacity="0.5"/>
-      </svg>
-    </div>
+    <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+      <path d="M11 2L20 7V15L11 20L2 15V7L11 2Z" stroke="#39ff14" stroke-width="1.2" fill="rgba(57,255,20,0.07)"/>
+      <path d="M11 2V20M2 7L20 7M2 15L20 15" stroke="#39ff14" stroke-width="0.4" opacity="0.5"/>
+      <circle cx="11" cy="11" r="2" fill="#39ff14" opacity="0.8"/>
+    </svg>
     veCUBE
-    <span class="logo-bracket">]</span>
   </div>
-  <div class="header-right">
-    <div class="chain-badge">CHAIN_ID: <span>143</span> // MONAD</div>
-    <div id="walletDisplay">
-      <button id="connectBtn" onclick="connectWallet()"><span>_ CONNECT</span></button>
+  <div class="hdr-r">
+    <div class="chain-tag">MONAD // <b>143</b></div>
+    <div id="walletArea">
+      <button id="connectBtn" onclick="connectWallet()">_ CONNECT WALLET</button>
     </div>
   </div>
 </header>
 
-<!-- Main -->
 <main>
-  <div class="terminal-header">
-    <span class="typing">vecube_rewards_v1.0 // loading contracts... done</span>
-  </div>
+  <div class="hero">CLAIM YOUR<br><em>LOCKED REWARDS</em></div>
 
   <!-- Stats -->
-  <div class="stats-grid">
-    <div class="stat" data-index="01">
-      <div class="stat-label">Total Minted</div>
-      <div class="stat-val" id="s-minted">—</div>
-      <div class="stat-sub">CubeNFTs</div>
-    </div>
-    <div class="stat" data-index="02">
-      <div class="stat-label">Rewards Pool</div>
-      <div class="stat-val">10T</div>
-      <div class="stat-sub">BMC deposited</div>
-    </div>
-    <div class="stat" data-index="03">
-      <div class="stat-label">Current APR</div>
-      <div class="stat-val">10%</div>
-      <div class="stat-sub">Both tokens</div>
-    </div>
-    <div class="stat" data-index="04">
-      <div class="stat-label">Vaults</div>
-      <div class="stat-val">132</div>
-      <div class="stat-sub">Registered</div>
-    </div>
-    <div class="stat" data-index="05">
-      <div class="stat-label">Epoch</div>
-      <div class="stat-val" id="s-epoch">0</div>
-      <div class="stat-sub">Current</div>
-    </div>
+  <div class="stats">
+    <div class="st"><div class="st-l">Total Minted</div><div class="st-v" id="s-minted">—</div><div class="st-s">CubeNFTs</div></div>
+    <div class="st"><div class="st-l">Rewards Pool</div><div class="st-v">10T</div><div class="st-s">BMC deposited</div></div>
+    <div class="st"><div class="st-l">APR</div><div class="st-v">10%</div><div class="st-s">Both tokens</div></div>
+    <div class="st"><div class="st-l">Vaults</div><div class="st-v">132</div><div class="st-s">Registered</div></div>
+    <div class="st"><div class="st-l">Epoch</div><div class="st-v" id="s-epoch">—</div><div class="st-s">Current</div></div>
   </div>
 
-  <div style="display:grid;grid-template-columns:1fr 320px;gap:1px;background:var(--border)">
-    <!-- Left -->
-    <div style="display:flex;flex-direction:column;gap:1px;background:var(--border)">
+  <div class="layout">
+    <!-- LEFT -->
+    <div class="col">
 
-      <!-- NFT Grid -->
-      <div class="panel">
-        <div class="p-head">
-          <div class="p-head-tag">
-            <span>YOUR CUBE NFTs</span>
-          </div>
-          <div style="display:flex;gap:8px;align-items:center">
-            <span id="nft-count" class="tag green">0 FOUND</span>
-          </div>
+      <!-- NFTs -->
+      <div class="box">
+        <div class="bx-h">
+          <span class="bx-ht">YOUR CUBE NFTs</span>
+          <span id="nft-count" class="tag tg">0 FOUND</span>
         </div>
-        <div id="nftContainer">
-          <div class="empty-state">
-            <span class="big">⬡</span>
-            Connect wallet to load your CubeNFTs
-          </div>
+        <div id="nftBox">
+          <div class="empty"><span class="ico">⬡</span>Connect wallet to load your NFTs</div>
         </div>
       </div>
 
       <!-- Claim -->
-      <div class="panel">
-        <div class="p-head">
-          <div class="p-head-tag">CLAIM REWARDS</div>
-          <span class="tag yellow">EPOCH 0</span>
+      <div class="box">
+        <div class="bx-h">
+          <span class="bx-ht">CLAIM REWARDS</span>
+          <span class="tag ty">EPOCH 0</span>
         </div>
-        <div class="claim-section">
-          <div class="field">
-            <label class="field-label">veCube Contract</label>
+        <div class="cl-body">
+          <div class="fl">
+            <label class="fl-lbl">veCube Contract</label>
             <select id="veSelect">
               <option value="">— select contract —</option>
               <option value="0xc631D96942d54745604CEeCAc2a0C73449cAc558">0xc631...c558</option>
@@ -867,36 +398,30 @@ main {
               <option value="0x118257222f4Dd6E89F318694bd6e05eF0a00C83A">0x1182...83A</option>
             </select>
           </div>
-          <div class="field">
-            <label class="field-label">Token ID</label>
-            <input type="number" id="tokenIdInput" placeholder="e.g. 1" min="1" oninput="calcRewards()"/>
+          <div class="fl">
+            <label class="fl-lbl">Token ID</label>
+            <input type="number" id="tokenId" placeholder="e.g. 1" min="1" oninput="calcRewards()"/>
           </div>
 
-          <div class="reward-block">
-            <div class="reward-token">
-              <div class="token-dot c">CUBE</div>
-              <div>
-                <div class="reward-name">Cube Token</div>
-                <div class="reward-apr">10% APR</div>
-              </div>
+          <div class="rw">
+            <div class="rw-l">
+              <div class="tkn tkn-g">CUB</div>
+              <div><div class="rw-n">CUBE</div><div class="rw-a">10% APR</div></div>
             </div>
-            <div class="reward-amount">
-              <div class="reward-val" id="cubeAmt">— CUBE</div>
-              <div class="reward-usd" id="cubeUsd">$—</div>
+            <div class="rw-r">
+              <div class="rw-v" id="cubeAmt">— CUBE</div>
+              <div class="rw-u" id="cubeUsd">$—</div>
             </div>
           </div>
 
-          <div class="reward-block">
-            <div class="reward-token">
-              <div class="token-dot b" style="color:#aa88ff">BMC</div>
-              <div>
-                <div class="reward-name">BMC Token</div>
-                <div class="reward-apr">10% APR</div>
-              </div>
+          <div class="rw">
+            <div class="rw-l">
+              <div class="tkn tkn-p">BMC</div>
+              <div><div class="rw-n" style="color:var(--purple)">BMC</div><div class="rw-a">10% APR</div></div>
             </div>
-            <div class="reward-amount">
-              <div class="reward-val" id="bmcAmt" style="color:#aa88ff">— BMC</div>
-              <div class="reward-usd" id="bmcUsd">$—</div>
+            <div class="rw-r">
+              <div class="rw-v" id="bmcAmt" style="color:var(--purple)">— BMC</div>
+              <div class="rw-u" id="bmcUsd">$—</div>
             </div>
           </div>
 
@@ -907,426 +432,394 @@ main {
       </div>
     </div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
+    <!-- RIGHT -->
+    <div class="col">
+
       <!-- Epoch -->
-      <div class="epoch-block">
-        <div class="p-head" style="padding:0 0 14px 0;border-bottom:1px solid var(--border);margin-bottom:16px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px">EPOCH_TIMER</span>
-          <span class="tag green">ACTIVE</span>
-        </div>
-        <div class="epoch-num" id="epochDisplay">0</div>
-        <div class="epoch-label">CURRENT EPOCH</div>
-        <div class="progress-track">
-          <div class="progress-fill" id="epochBar" style="width:13%"></div>
-        </div>
-        <div class="progress-meta">
-          <span>2026.03.01</span>
-          <span id="epochPct">13.2%</span>
-          <span>2026.03.31</span>
-        </div>
-        <div class="countdown">
-          <div class="cd-unit"><span class="cd-num" id="cd-d">26</span><span class="cd-label">DAYS</span></div>
-          <div class="cd-unit"><span class="cd-num" id="cd-h">00</span><span class="cd-label">HRS</span></div>
-          <div class="cd-unit"><span class="cd-num" id="cd-m">00</span><span class="cd-label">MIN</span></div>
-          <div class="cd-unit"><span class="cd-num" id="cd-s">00</span><span class="cd-label">SEC</span></div>
-        </div>
-        <div class="epoch-note">
-          // After epoch ends, call<br>
-          advanceEpoch() to open<br>
-          claiming for all holders.
+      <div class="box">
+        <div class="bx-h"><span class="bx-ht">EPOCH TIMER</span><span class="tag tg">ACTIVE</span></div>
+        <div class="ep-body">
+          <div class="bignum" id="epochNum">0</div>
+          <div class="ep-lbl">CURRENT EPOCH</div>
+          <div class="prog"><div class="prog-f" id="progF" style="width:13%"></div></div>
+          <div class="prog-m">
+            <span>MAR 01</span><span id="progPct">13%</span><span>MAR 31</span>
+          </div>
+          <div class="cd">
+            <div class="cu"><span class="cn" id="cd-d">26</span><span class="cl-u">DAYS</span></div>
+            <div class="cu"><span class="cn" id="cd-h">00</span><span class="cl-u">HRS</span></div>
+            <div class="cu"><span class="cn" id="cd-m">00</span><span class="cl-u">MIN</span></div>
+            <div class="cu"><span class="cn" id="cd-s">00</span><span class="cl-u">SEC</span></div>
+          </div>
+          <div class="ep-note">
+            // epoch 0 ends MAR 31 2026<br>
+            // call advanceEpoch() to open<br>
+            // claiming for all holders
+          </div>
         </div>
       </div>
 
       <!-- Prices -->
-      <div class="prices-block">
-        <div class="p-head" style="padding:0 0 14px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px">ORACLE_PRICES</span>
-          <span class="tag green">LIVE</span>
-        </div>
-        <div class="price-row">
-          <span class="price-sym c">CUBE</span>
-          <span class="price-usd" style="color:var(--green)">$0.0010</span>
-        </div>
-        <div class="price-row">
-          <span class="price-sym b">BMC</span>
-          <span class="price-usd" style="color:#aa88ff">$0.0500</span>
-        </div>
-        <div class="price-row">
-          <span class="price-sym m">MON</span>
-          <span class="price-usd" style="color:var(--yellow)">$0.0208</span>
-        </div>
-        <div style="margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted2)">
-          oracle: 0xEa16...07A2
+      <div class="box">
+        <div class="bx-h"><span class="bx-ht">ORACLE PRICES</span><span class="tag tg">LIVE</span></div>
+        <div class="px-body">
+          <div class="px-r">
+            <span class="px-s pg"><span class="pdot"></span>CUBE</span>
+            <span class="px-v pg">$0.0010</span>
+          </div>
+          <div class="px-r">
+            <span class="px-s pp"><span class="pdot"></span>BMC</span>
+            <span class="px-v pp">$0.0500</span>
+          </div>
+          <div class="px-r">
+            <span class="px-s py"><span class="pdot"></span>MON</span>
+            <span class="px-v py">$0.0208</span>
+          </div>
+          <div style="margin-top:9px;font-size:9px;color:var(--muted2)">oracle: 0xEa16...7A2</div>
         </div>
       </div>
 
       <!-- Contracts -->
-      <div class="contracts-block">
-        <div class="p-head" style="padding:0 0 14px 0;border-bottom:1px solid var(--border);margin-bottom:14px">
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:2px">CONTRACTS</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">CubeNFT</span>
-          <span class="contract-val" onclick="copyAddr('0x2BfB8C4a8D7153E88BF1947C193cA6a55e7008D1')">0x2BfB...8D1</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">Rewards</span>
-          <span class="contract-val" onclick="copyAddr('0x15E85660239753A1d1C7bf8C19b2F4c094a80669')">0x15E8...669</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">Oracle</span>
-          <span class="contract-val" onclick="copyAddr('0xEa1644D8296b4E043b935FdCf00803E4aD4307A2')">0xEa16...A2</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">Factory</span>
-          <span class="contract-val" onclick="copyAddr('0x48749Ba36a2E566be33865E918BA133CA829aE2B')">0x4874...2B</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">CUBE</span>
-          <span class="contract-val" onclick="copyAddr('0x87Bdd0E32aca3AC42d5D35baF38937Eae840f5A3')">0x87Bd...5A3</span>
-        </div>
-        <div class="contract-row">
-          <span class="contract-key">BMC</span>
-          <span class="contract-val" onclick="copyAddr('0x244DF0E3A8276aDD749AF3ec3Ff7e642B1dC46a5')">0x244D...6a5</span>
+      <div class="box">
+        <div class="bx-h"><span class="bx-ht">CONTRACTS</span><span class="tag tw">MONAD</span></div>
+        <div class="cx-body">
+          <div class="cx-r"><span class="cx-k">CubeNFT</span><span class="cx-v" onclick="cp('0x2BfB8C4a8D7153E88BF1947C193cA6a55e7008D1')">0x2BfB...8D1 ⎘</span></div>
+          <div class="cx-r"><span class="cx-k">Rewards</span><span class="cx-v" onclick="cp('0x15E85660239753A1d1C7bf8C19b2F4c094a80669')">0x15E8...669 ⎘</span></div>
+          <div class="cx-r"><span class="cx-k">Oracle</span><span class="cx-v" onclick="cp('0xEa1644D8296b4E043b935FdCf00803E4aD4307A2')">0xEa16...7A2 ⎘</span></div>
+          <div class="cx-r"><span class="cx-k">Factory</span><span class="cx-v" onclick="cp('0x48749Ba36a2E566be33865E918BA133CA829aE2B')">0x4874...E2B ⎘</span></div>
+          <div class="cx-r"><span class="cx-k">BMC</span><span class="cx-v" onclick="cp('0x244DF0E3A8276aDD749AF3ec3Ff7e642B1dC46a5')">0x244D...6a5 ⎘</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Log terminal -->
-  <div class="log-terminal" id="logTerminal">
-    <div class="log-line"><span class="ts">00:00:00</span><span class="msg">// vecube_rewards initialized</span></div>
-    <div class="log-line"><span class="ts">00:00:00</span><span class="msg">// contracts loaded: CubeNFT, Rewards, Oracle, WalletFactory</span></div>
-    <div class="log-line"><span class="ts">00:00:00</span><span class="msg">// waiting for wallet connection...</span></div>
+  <!-- Terminal -->
+  <div class="term" id="term">
+    <div class="tl"><span class="ts">00:00:00</span><span class="ok">// vecube_rewards_v1.0 initialized</span></div>
+    <div class="tl"><span class="ts">00:00:00</span><span class="ok">// contracts: CubeNFT · Rewards · Oracle · WalletFactory</span></div>
+    <div class="tl"><span class="ts">00:00:00</span><span class="wn">// awaiting wallet connection...</span></div>
   </div>
 </main>
 
 <div class="toast" id="toast"></div>
 
 <script>
-// ─── CONFIG ───────────────────────────────────────────────
+// ── CONFIG ────────────────────────────────────────────────
 const RPC = 'https://monad-mainnet.g.alchemy.com/v2/Uwb7T0DbXMQHjiJBNf9_b005qYjLmJqk';
-const CHAIN_ID = 143;
+const CHAIN_HEX = '0x8f'; // 143 decimal — MUST be lowercase for MetaMask
+const CHAIN_ID  = 143;
 
-const CONTRACTS = {
-  cubeNFT:  '0x2BfB8C4a8D7153E88BF1947C193cA6a55e7008D1',
-  rewards:  '0x15E85660239753A1d1C7bf8C19b2F4c094a80669',
-  oracle:   '0xEa1644D8296b4E043b935FdCf00803E4aD4307A2',
-  factory:  '0x48749Ba36a2E566be33865E918BA133CA829aE2B',
-  cube:     '0x87Bdd0E32aca3AC42d5D35baF38937Eae840f5A3',
-  bmc:      '0x244DF0E3A8276aDD749AF3ec3Ff7e642B1dC46a5',
+const ADDR = {
+  nft:     '0x2BfB8C4a8D7153E88BF1947C193cA6a55e7008D1',
+  rewards: '0x15E85660239753A1d1C7bf8C19b2F4c094a80669',
+  cube:    '0x87Bdd0E32aca3AC42d5D35baF38937Eae840f5A3',
+  bmc:     '0x244DF0E3A8276aDD749AF3ec3Ff7e642B1dC46a5',
 };
 
-const CUBE_NFT_ABI = [
+const NFT_ABI = [
   "function totalMinted() view returns (uint256)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function ownerOf(uint256 tokenId) view returns (address)",
-  "function tokenURI(uint256 tokenId) view returns (string)",
-  "function getCubeData(uint256 tokenId) view returns (tuple(uint8 colorIndex, uint256 seed, uint256 timestamp, address memeCoin, string coinSymbol))",
-  "function getCubeCoin(uint256 tokenId) view returns (address)",
+  "function balanceOf(address) view returns (uint256)",
+  "function ownerOf(uint256) view returns (address)",
+  "function getCubeData(uint256) view returns (tuple(uint8 colorIndex, uint256 seed, uint256 timestamp, address memeCoin, string coinSymbol))",
 ];
 
-const REWARDS_ABI = [
+const REW_ABI = [
   "function currentEpoch() view returns (uint256)",
-  "function pendingRewards(address veContract, uint256 tokenId) view returns (address[] tokens, uint256[] amounts, uint256 epoch)",
-  "function claimAll(address veContract, uint256 tokenId, uint256 epoch) external",
-  "function calculateReward(address veContract, uint256 tokenId, address rewardToken, uint256 epoch) view returns (uint256)",
+  "function pendingRewards(address,uint256) view returns (address[],uint256[],uint256)",
+  "function claimAll(address,uint256,uint256) external",
 ];
 
-// ─── STATE ────────────────────────────────────────────────
-let provider, signer, userAddress;
-let readProvider;
+const COLORS = ['#39ff14','#ff2244','#ffe600','#bb99ff','#ff6b35','#00ccff','#ff88cc','#88ffcc'];
 
-// ─── MATRIX RAIN ─────────────────────────────────────────
-(function() {
-  const canvas = document.getElementById('matrix-canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  const cols = Math.floor(canvas.width / 16);
-  const drops = Array(cols).fill(1);
-  const chars = '01CUBE0VECUBE10MONAD01';
-  function draw() {
-    ctx.fillStyle = 'rgba(0,0,0,0.05)';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#00ff41';
-    ctx.font = '12px IBM Plex Mono';
-    drops.forEach((y,i) => {
-      const c = chars[Math.floor(Math.random()*chars.length)];
-      ctx.fillText(c, i*16, y*16);
-      if(y*16>canvas.height && Math.random()>0.975) drops[i]=0;
+// ── STATE ─────────────────────────────────────────────────
+let rp, provider, signer, wallet;
+
+// ── MATRIX BG ─────────────────────────────────────────────
+(()=>{
+  const c=document.getElementById('bg-canvas'),x=c.getContext('2d');
+  const rsz=()=>{c.width=innerWidth;c.height=innerHeight};
+  rsz(); window.addEventListener('resize',rsz);
+  const ch='01vecube10monadreward';
+  let drops=[];
+  const init=()=>{drops=Array(Math.floor(c.width/18)).fill(1)};
+  init(); window.addEventListener('resize',init);
+  setInterval(()=>{
+    x.fillStyle='rgba(0,0,0,0.06)';
+    x.fillRect(0,0,c.width,c.height);
+    x.fillStyle='#39ff14';
+    x.font='13px IBM Plex Mono';
+    drops.forEach((y,i)=>{
+      x.fillText(ch[Math.floor(Math.random()*ch.length)],i*18,y*18);
+      if(y*18>c.height&&Math.random()>.975)drops[i]=0;
       drops[i]++;
     });
-  }
-  setInterval(draw, 60);
-  window.addEventListener('resize', () => { canvas.width=window.innerWidth; canvas.height=window.innerHeight; });
+  },55);
 })();
 
-// ─── COUNTDOWN ────────────────────────────────────────────
-const epochEnd = new Date('2026-03-31T00:00:00Z').getTime();
-const epochStart = new Date('2026-03-01T00:00:00Z').getTime();
-
-function updateCountdown() {
-  const now = Date.now();
-  const diff = Math.max(0, epochEnd - now);
-  const total = epochEnd - epochStart;
-  const pct = Math.min(100, ((now - epochStart) / total * 100));
-  document.getElementById('cd-d').textContent = String(Math.floor(diff/86400000)).padStart(2,'0');
-  document.getElementById('cd-h').textContent = String(Math.floor(diff%86400000/3600000)).padStart(2,'0');
-  document.getElementById('cd-m').textContent = String(Math.floor(diff%3600000/60000)).padStart(2,'0');
-  document.getElementById('cd-s').textContent = String(Math.floor(diff%60000/1000)).padStart(2,'0');
-  document.getElementById('epochBar').style.width = pct.toFixed(1)+'%';
-  document.getElementById('epochPct').textContent = pct.toFixed(1)+'%';
+// ── COUNTDOWN ─────────────────────────────────────────────
+const END=new Date('2026-03-31T00:00:00Z').getTime();
+const STA=new Date('2026-03-01T00:00:00Z').getTime();
+function tick(){
+  const now=Date.now(),diff=Math.max(0,END-now);
+  const pct=Math.min(100,(now-STA)/(END-STA)*100);
+  document.getElementById('cd-d').textContent=String(Math.floor(diff/86400000)).padStart(2,'0');
+  document.getElementById('cd-h').textContent=String(Math.floor(diff%86400000/3600000)).padStart(2,'0');
+  document.getElementById('cd-m').textContent=String(Math.floor(diff%3600000/60000)).padStart(2,'0');
+  document.getElementById('cd-s').textContent=String(Math.floor(diff%60000/1000)).padStart(2,'0');
+  document.getElementById('progF').style.width=pct.toFixed(1)+'%';
+  document.getElementById('progPct').textContent=pct.toFixed(1)+'%';
 }
-setInterval(updateCountdown, 1000);
-updateCountdown();
+setInterval(tick,1000);tick();
 
-// ─── READ PROVIDER (no wallet needed) ────────────────────
-async function initReadProvider() {
-  try {
-    const network = new ethers.Network("monad", 143);
-    readProvider = new ethers.JsonRpcProvider(RPC, network, { staticNetwork: network });
-    const nftContract = new ethers.Contract(CONTRACTS.cubeNFT, CUBE_NFT_ABI, readProvider);
-    const total = await nftContract.totalMinted();
-    document.getElementById('s-minted').textContent = total.toString();
-    log(`totalMinted: ${total}`);
-
-    const rewardsContract = new ethers.Contract(CONTRACTS.rewards, REWARDS_ABI, readProvider);
-    const epoch = await rewardsContract.currentEpoch();
-    document.getElementById('s-epoch').textContent = epoch.toString();
-    document.getElementById('epochDisplay').textContent = epoch.toString();
-    log(`currentEpoch: ${epoch}`);
-  } catch(e) {
-    log(`read provider error: ${e.message}`, 'err');
-  }
+// ── READ PROVIDER ─────────────────────────────────────────
+async function initRead(){
+  try{
+    const net=new ethers.Network('monad',CHAIN_ID);
+    rp=new ethers.JsonRpcProvider(RPC,net,{staticNetwork:net});
+    const nft=new ethers.Contract(ADDR.nft,NFT_ABI,rp);
+    const total=await nft.totalMinted();
+    document.getElementById('s-minted').textContent=total.toString();
+    log('totalMinted: '+total);
+    const rew=new ethers.Contract(ADDR.rewards,REW_ABI,rp);
+    const epoch=await rew.currentEpoch();
+    document.getElementById('s-epoch').textContent=epoch.toString();
+    document.getElementById('epochNum').textContent=epoch.toString();
+    log('currentEpoch: '+epoch);
+  }catch(e){log('init error: '+e.message,'er')}
 }
+initRead();
 
-initReadProvider();
-
-// ─── CONNECT WALLET ───────────────────────────────────────
-async function connectWallet() {
-  if (!window.ethereum) {
-    showToast('No wallet detected. Install MetaMask.');
+// ── CONNECT WALLET ────────────────────────────────────────
+async function connectWallet(){
+  // Check for any injected wallet
+  const eth = window.ethereum;
+  if(!eth){
+    toast('No wallet found — install MetaMask or Rabby');
+    log('no injected wallet detected','er');
     return;
   }
-  try {
-    log('connecting wallet...');
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
 
-    // Switch to Monad
-    try {
-      await window.ethereum.request({
-        method: 'wallet_switchEthereumChain',
-        params: [{ chainId: '0x8F' }], // 143 in hex
+  try{
+    log('requesting accounts...');
+
+    // 1. Request accounts first
+    const accounts = await eth.request({method:'eth_requestAccounts'});
+    if(!accounts||!accounts.length) throw new Error('No accounts returned');
+    log('accounts received: '+accounts[0].slice(0,10)+'...');
+
+    // 2. Try to switch to Monad — handle all error cases
+    try{
+      await eth.request({
+        method:'wallet_switchEthereumChain',
+        params:[{chainId:CHAIN_HEX}]  // lowercase hex is required
       });
-    } catch(e) {
-      if (e.code === 4902) {
-        await window.ethereum.request({
-          method: 'wallet_addEthereumChain',
-          params: [{
-            chainId: '0x8F',
-            chainName: 'Monad',
-            rpcUrls: ['https://rpc.monad.xyz'],
-            nativeCurrency: { name: 'MON', symbol: 'MON', decimals: 18 },
-          }]
-        });
+      log('switched to Monad chain');
+    }catch(sw){
+      if(sw.code===4902||sw.code===-32603||sw.code===4001&&sw.message?.includes('chain')){
+        // Chain not added yet — add it
+        log('adding Monad to wallet...','wn');
+        try{
+          await eth.request({
+            method:'wallet_addEthereumChain',
+            params:[{
+              chainId:CHAIN_HEX,
+              chainName:'Monad Mainnet',
+              rpcUrls:['https://rpc.monad.xyz',RPC],
+              nativeCurrency:{name:'MON',symbol:'MON',decimals:18},
+              blockExplorerUrls:['https://monadexplorer.com']
+            }]
+          });
+          log('Monad network added');
+        }catch(ae){
+          log('add chain failed: '+ae.message,'wn');
+          // continue anyway — wallet might already be on right chain
+        }
+      }else if(sw.code===4001){
+        // User rejected chain switch — still try to connect
+        log('chain switch rejected by user, continuing...','wn');
+      }else{
+        log('chain switch: '+sw.message,'wn');
       }
     }
 
-    provider = new ethers.BrowserProvider(window.ethereum);
-    signer = await provider.getSigner();
-    userAddress = await signer.getAddress();
+    // 3. Create provider + signer
+    provider=new ethers.BrowserProvider(eth);
+    signer=await provider.getSigner();
+    wallet=await signer.getAddress();
 
-    const short = userAddress.slice(0,6)+'...'+userAddress.slice(-4);
-    document.getElementById('walletDisplay').innerHTML = `
-      <div class="wallet-info">
-        <div class="status-dot"></div>
-        ${short}
-      </div>`;
+    // 4. Verify we're on the right chain
+    const net=await provider.getNetwork();
+    if(Number(net.chainId)!==CHAIN_ID){
+      log('warning: not on Monad (chain '+net.chainId+')','wn');
+      toast('Switch to Monad chain (143) in your wallet');
+    }
 
-    log(`connected: ${userAddress}`);
-    showToast('✓ Wallet connected');
-    loadUserNFTs();
-  } catch(e) {
-    log(`connection failed: ${e.message}`, 'err');
-    showToast('Connection failed');
+    // 5. Update UI
+    const short=wallet.slice(0,6)+'...'+wallet.slice(-4);
+    document.getElementById('walletArea').innerHTML=
+      `<div class="wpill"><div class="dot"></div>${short}</div>`;
+
+    log('connected: '+wallet);
+    toast('✓ Wallet connected');
+    loadNFTs();
+
+  }catch(e){
+    if(e.code===4001){
+      log('user rejected','wn');
+      toast('Rejected — please approve in wallet');
+    }else{
+      log('connect error: '+e.message,'er');
+      toast('Failed: '+e.message.slice(0,50));
+    }
   }
 }
 
-// ─── LOAD USER NFTs ───────────────────────────────────────
-async function loadUserNFTs() {
-  if (!userAddress) return;
-  const container = document.getElementById('nftContainer');
-  container.innerHTML = '<div class="empty-state"><span class="spinner"></span><br><br>Scanning NFTs...</div>';
-  log('scanning CubeNFTs...');
+// ── LOAD NFTs (parallel batches of 20) ────────────────────
+async function loadNFTs(){
+  const box=document.getElementById('nftBox');
+  box.innerHTML='<div class="empty"><span class="spinner"></span><br><br>Scanning NFTs...</div>';
+  try{
+    const nft=new ethers.Contract(ADDR.nft,NFT_ABI,rp);
+    const [bal,tot]=await Promise.all([nft.balanceOf(wallet),nft.totalMinted()]);
+    const b=Number(bal),t=Number(tot);
+    document.getElementById('nft-count').textContent=b+' FOUND';
+    log('balance: '+b+' NFTs — scanning '+t+' in batches...');
+    if(b===0){box.innerHTML='<div class="empty"><span class="ico">∅</span>No CubeNFTs in this wallet</div>';return}
 
-  try {
-    const nftContract = new ethers.Contract(CONTRACTS.cubeNFT, CUBE_NFT_ABI, readProvider);
-    const balance = await nftContract.balanceOf(userAddress);
-    const total = await nftContract.totalMinted();
-
-    log(`balance: ${Number(balance)} NFTs — scanning ${Number(total)} tokens...`);
-    document.getElementById('nft-count').textContent = `${balance} FOUND`;
-
-    if (Number(balance) === 0) {
-      container.innerHTML = '<div class="empty-state"><span class="big">∅</span>No CubeNFTs found in this wallet</div>';
-      return;
-    }
-
-    // Scan for owned tokens
-    let found = [];
-    for (let i = 1; i <= Number(total) && found.length < Number(balance); i++) {
-      try {
-        const owner = await nftContract.ownerOf(i);
-        if (owner.toLowerCase() === userAddress.toLowerCase()) {
-          const data = await nftContract.getCubeData(i);
-          found.push({ id: i, colorIndex: Number(data.colorIndex), coinSymbol: data.coinSymbol, memeCoin: data.memeCoin });
+    let found=[];
+    const BATCH=20;
+    for(let s=1;s<=t&&found.length<b;s+=BATCH){
+      const ids=[];
+      for(let i=s;i<=Math.min(s+BATCH-1,t);i++)ids.push(i);
+      const res=await Promise.allSettled(ids.map(async id=>{
+        const owner=await nft.ownerOf(id);
+        if(owner.toLowerCase()===wallet.toLowerCase()){
+          const d=await nft.getCubeData(id);
+          return{id,ci:Number(d.colorIndex),sym:d.coinSymbol};
         }
-      } catch(e) {}
+        return null;
+      }));
+      res.forEach(r=>{if(r.status==='fulfilled'&&r.value)found.push(r.value)});
+      renderNFTs(found);
+      log('scanned '+Math.min(s+BATCH-1,t)+'/'+t+' — found '+found.length);
     }
-
-    renderNFTs(found);
-    log(`found ${found.length} NFTs owned by ${userAddress.slice(0,8)}...`);
-  } catch(e) {
-    log(`NFT scan error: ${e.message}`, 'err');
-    container.innerHTML = '<div class="empty-state">Error loading NFTs</div>';
+    log('scan complete: '+found.length+' NFTs loaded');
+  }catch(e){
+    log('scan error: '+e.message,'er');
+    box.innerHTML='<div class="empty">Error loading NFTs</div>';
   }
 }
 
-// ─── RENDER NFTs ──────────────────────────────────────────
-const COLORS = ['#00ff41','#ff3333','#ffee00','#aa88ff','#ff6b35','#00ccff','#ff88cc','#88ffcc'];
-const COLOR_NAMES = ['GREEN','RED','YELLOW','PURPLE','ORANGE','CYAN','PINK','MINT'];
-
-function renderNFTs(nfts) {
-  const container = document.getElementById('nftContainer');
-  if (!nfts.length) {
-    container.innerHTML = '<div class="empty-state">No NFTs found</div>';
-    return;
-  }
-  container.innerHTML = `<div class="nft-grid">${nfts.map(n => {
-    const color = COLORS[n.colorIndex % COLORS.length];
-    return `
-    <div class="nft-card" onclick="selectNFT(${n.id}, '${n.coinSymbol}')" id="nft-${n.id}">
-      <div class="nft-visual">
-        <svg class="nft-cube" viewBox="0 0 60 60" fill="none">
-          <path d="M30 8L50 19V41L30 52L10 41V19L30 8Z" stroke="${color}" stroke-width="1.5" fill="${color}11"/>
-          <path d="M30 8V52M10 19L50 19M10 41L50 41" stroke="${color}" stroke-width="0.5" opacity="0.4"/>
-          <circle cx="30" cy="30" r="4" fill="${color}" opacity="0.7"/>
+function renderNFTs(nfts){
+  const box=document.getElementById('nftBox');
+  if(!nfts.length)return;
+  box.innerHTML='<div class="nft-wrap">'+nfts.map(n=>{
+    const col=COLORS[n.ci%COLORS.length];
+    return`<div class="nc" id="nc-${n.id}" onclick="pick(${n.id},'${n.sym||''}')">
+      <div class="nc-svg">
+        <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+          <path d="M30 5L52 17V43L30 55L8 43V17L30 5Z" stroke="${col}" stroke-width="1.4" fill="${col}0d"/>
+          <path d="M30 5V55M8 17L52 17M8 43L52 43" stroke="${col}" stroke-width="0.4" opacity="0.4"/>
+          <circle cx="30" cy="30" r="5" fill="${col}" opacity="0.5"/>
+          <circle cx="30" cy="30" r="2" fill="${col}"/>
         </svg>
       </div>
-      <div class="nft-id">#${String(n.id).padStart(3,'0')}</div>
-      <div class="nft-coin">${n.coinSymbol || 'UNKNOWN'}</div>
-      <div class="nft-reward-badge">tap to claim</div>
+      <div class="nc-id">#${String(n.id).padStart(3,'0')}</div>
+      <div class="nc-sym">${n.sym||'—'}</div>
+      <div class="nc-tap">tap to select</div>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')+'</div>';
 }
 
-function selectNFT(id, symbol) {
-  document.querySelectorAll('.nft-card').forEach(c => c.classList.remove('active'));
-  const el = document.getElementById(`nft-${id}`);
-  if(el) el.classList.add('active');
-  document.getElementById('tokenIdInput').value = id;
+function pick(id,sym){
+  document.querySelectorAll('.nc').forEach(c=>c.classList.remove('sel'));
+  const el=document.getElementById('nc-'+id);
+  if(el)el.classList.add('sel');
+  document.getElementById('tokenId').value=id;
   calcRewards();
-  log(`selected NFT #${id} (${symbol})`);
+  log('selected NFT #'+id+' · '+(sym||'?'));
 }
 
-// ─── CALC REWARDS ─────────────────────────────────────────
-async function calcRewards() {
-  const tokenId = document.getElementById('tokenIdInput').value;
-  const veContract = document.getElementById('veSelect').value;
-  if (!tokenId || !veContract) return;
-
-  try {
-    const rewardsContract = new ethers.Contract(CONTRACTS.rewards, REWARDS_ABI, readProvider);
-    const [tokens, amounts, epoch] = await rewardsContract.pendingRewards(veContract, tokenId);
-
-    let cubeAmt = 0n, bmcAmt = 0n;
-    for(let i = 0; i < tokens.length; i++) {
-      if(tokens[i].toLowerCase() === CONTRACTS.cube.toLowerCase()) cubeAmt = amounts[i];
-      if(tokens[i].toLowerCase() === CONTRACTS.bmc.toLowerCase()) bmcAmt = amounts[i];
+// ── CALC REWARDS ──────────────────────────────────────────
+async function calcRewards(){
+  const tid=document.getElementById('tokenId').value;
+  const ve=document.getElementById('veSelect').value;
+  if(!tid||!ve)return;
+  try{
+    const rew=new ethers.Contract(ADDR.rewards,REW_ABI,rp);
+    const[tokens,amounts]=await rew.pendingRewards(ve,tid);
+    let ca=0n,ba=0n;
+    for(let i=0;i<tokens.length;i++){
+      if(tokens[i].toLowerCase()===ADDR.cube.toLowerCase())ca=amounts[i];
+      if(tokens[i].toLowerCase()===ADDR.bmc.toLowerCase())ba=amounts[i];
     }
-
-    const cubeF = parseFloat(ethers.formatUnits(cubeAmt, 18));
-    const bmcF = parseFloat(ethers.formatUnits(bmcAmt, 18));
-
-    document.getElementById('cubeAmt').textContent = cubeF > 0 ? cubeF.toFixed(4)+' CUBE' : '0 CUBE';
-    document.getElementById('cubeUsd').textContent = '$'+(cubeF * 0.001).toFixed(4);
-    document.getElementById('bmcAmt').textContent = bmcF > 0 ? bmcF.toFixed(4)+' BMC' : '0 BMC';
-    document.getElementById('bmcUsd').textContent = '$'+(bmcF * 0.05).toFixed(4);
-    log(`rewards for #${tokenId}: ${cubeF} CUBE, ${bmcF} BMC`);
-  } catch(e) {
-    // Fallback: epoch not finished yet, show 0
-    document.getElementById('cubeAmt').textContent = '0 CUBE';
-    document.getElementById('bmcAmt').textContent = '0 BMC';
-    document.getElementById('cubeUsd').textContent = '(epoch active)';
-    document.getElementById('bmcUsd').textContent = '(epoch active)';
+    const cf=parseFloat(ethers.formatUnits(ca,18));
+    const bf=parseFloat(ethers.formatUnits(ba,18));
+    document.getElementById('cubeAmt').textContent=cf.toFixed(4)+' CUBE';
+    document.getElementById('cubeUsd').textContent='$'+(cf*0.001).toFixed(4);
+    document.getElementById('bmcAmt').textContent=bf.toFixed(4)+' BMC';
+    document.getElementById('bmcUsd').textContent='$'+(bf*0.05).toFixed(4);
+    log('pending #'+tid+': '+cf+' CUBE / '+bf+' BMC');
+  }catch(e){
+    document.getElementById('cubeAmt').textContent='0 CUBE';
+    document.getElementById('bmcAmt').textContent='0 BMC';
+    document.getElementById('cubeUsd').textContent='(epoch active)';
+    document.getElementById('bmcUsd').textContent='(epoch active)';
   }
 }
 
-// ─── CLAIM ────────────────────────────────────────────────
-async function claimRewards() {
-  if (!signer) { connectWallet(); return; }
-  const tokenId = document.getElementById('tokenIdInput').value;
-  const veContract = document.getElementById('veSelect').value;
-  if (!tokenId || !veContract) { showToast('Select a contract and token ID'); return; }
-
-  const btn = document.getElementById('claimBtn');
-  const txt = document.getElementById('claimTxt');
-  btn.disabled = true;
-  txt.textContent = '_ WAITING FOR SIGNATURE...';
-  log(`initiating claim for NFT #${tokenId}...`, 'warn');
-
-  try {
-    const rewardsContract = new ethers.Contract(CONTRACTS.rewards, REWARDS_ABI, signer);
-    const epoch = await new ethers.Contract(CONTRACTS.rewards, REWARDS_ABI, readProvider).currentEpoch();
-
-    if (epoch == 0) {
-      showToast('Epoch 0 still active. Wait until Mar 31.');
-      log('epoch 0 not finished yet', 'warn');
-      btn.disabled = false;
-      txt.textContent = '_ CLAIM ALL REWARDS';
-      return;
+// ── CLAIM ─────────────────────────────────────────────────
+async function claimRewards(){
+  if(!signer){connectWallet();return}
+  const tid=document.getElementById('tokenId').value;
+  const ve=document.getElementById('veSelect').value;
+  if(!tid||!ve){toast('Select contract + token ID first');return}
+  const btn=document.getElementById('claimBtn');
+  const txt=document.getElementById('claimTxt');
+  btn.disabled=true;
+  txt.textContent='_ WAITING FOR SIGNATURE...';
+  log('initiating claim NFT #'+tid+'...','wn');
+  try{
+    const rew=new ethers.Contract(ADDR.rewards,REW_ABI,rp);
+    const epoch=await rew.currentEpoch();
+    if(Number(epoch)===0){
+      toast('Epoch 0 still active — wait until Mar 31');
+      log('epoch 0 not finished','wn');
+      btn.disabled=false;txt.textContent='_ CLAIM ALL REWARDS';return;
     }
-
-    txt.textContent = '_ BROADCASTING...';
-    const tx = await rewardsContract.claimAll(veContract, tokenId, epoch - 1n);
-    log(`tx sent: ${tx.hash}`);
-    txt.textContent = '_ CONFIRMING...';
+    const rs=new ethers.Contract(ADDR.rewards,REW_ABI,signer);
+    txt.textContent='_ BROADCASTING...';
+    const tx=await rs.claimAll(ve,tid,epoch-1n);
+    log('tx: '+tx.hash,'wn');
+    txt.textContent='_ CONFIRMING...';
     await tx.wait();
-    log(`✓ claimed successfully: ${tx.hash}`, 'msg');
-    showToast('✓ Rewards claimed!');
+    log('✓ claimed: '+tx.hash);
+    toast('✓ Rewards claimed!');
     calcRewards();
-  } catch(e) {
-    log(`claim error: ${e.message}`, 'err');
-    showToast('Claim failed: ' + e.message.slice(0,40));
+  }catch(e){
+    log('claim failed: '+e.message,'er');
+    toast('Failed: '+e.message.slice(0,50));
   }
-
-  btn.disabled = false;
-  txt.textContent = '_ CLAIM ALL REWARDS';
+  btn.disabled=false;txt.textContent='_ CLAIM ALL REWARDS';
 }
 
-// ─── UTILS ────────────────────────────────────────────────
-function log(msg, type = 'msg') {
-  const terminal = document.getElementById('logTerminal');
-  const now = new Date();
-  const ts = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
-  const line = document.createElement('div');
-  line.className = 'log-line';
-  line.innerHTML = `<span class="ts">${ts}</span><span class="${type}">// ${msg}</span>`;
-  terminal.appendChild(line);
-  terminal.scrollTop = terminal.scrollHeight;
+// ── UTILS ─────────────────────────────────────────────────
+function log(msg,cls='ok'){
+  const t=document.getElementById('term');
+  const n=new Date();
+  const ts=[n.getHours(),n.getMinutes(),n.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':');
+  const d=document.createElement('div');
+  d.className='tl';
+  d.innerHTML=`<span class="ts">${ts}</span><span class="${cls}">// ${msg}</span>`;
+  t.appendChild(d);t.scrollTop=t.scrollHeight;
 }
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 3500);
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3500);
 }
-
-function copyAddr(addr) {
-  navigator.clipboard.writeText(addr).then(() => showToast('✓ Copied: ' + addr.slice(0,10)+'...'));
+function cp(addr){
+  navigator.clipboard.writeText(addr).then(()=>toast('✓ Copied '+addr.slice(0,10)+'...'));
 }
 </script>
 </body>
